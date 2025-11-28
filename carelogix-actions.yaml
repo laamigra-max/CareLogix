@@ -1,0 +1,91 @@
+openapi: 3.1.0
+info:
+  title: CARELOGIX Facturas API (SharePoint/Graph)
+  version: 1.0.0
+
+servers:
+  - url: https://graph.microsoft.com/v1.0
+
+paths:
+  /sites/{siteId}/drives/{driveId}/root:/CARELOGIX_Facturas_606-607/CARELOGIX_Facturas_DB.xlsx:/workbook/tables/Table1/rows/add:
+    post:
+      summary: Insertar fila de factura en Excel (BASE DE DATOS)
+      operationId: insertFactura
+      security:
+        - oauth2: [Files.ReadWrite.All, Sites.ReadWrite.All]
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: driveId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                values:
+                  type: array
+                  description: "Fila completa en el orden exacto de columnas"
+                  items:
+                    type: array
+                    items:
+                      type: string
+      responses:
+        "200":
+          description: Fila agregada correctamente
+        "400":
+          description: Error en datos enviados
+
+  /sites/{siteId}/drives/{driveId}/root:/CARELOGIX_Imagenes_Facturas/{fileName}:/content:
+    put:
+      summary: Subir imagen de factura a SharePoint
+      operationId: uploadFacturaImagen
+      security:
+        - oauth2: [Files.ReadWrite.All, Sites.ReadWrite.All]
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: driveId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fileName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "201":
+          description: Imagen subida
+        "400":
+          description: Error al subir archivo
+
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://login.microsoftonline.com/6da08a49-de7f-46e3-ac0f-a3ffe1e71542/oauth2/v2.0/token
+          scopes:
+            Files.ReadWrite.All: Leer y escribir archivos
+            Sites.ReadWrite.All: Leer y escribir sitios
