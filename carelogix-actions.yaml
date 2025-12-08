@@ -1,91 +1,93 @@
 openapi: 3.1.0
+
 info:
-  title: CARELOGIX Facturas API (SharePoint/Graph)
-  version: 1.0.0
+  title: CARELOGIX DGII Worker API
+  version: "5.0"
+  description: >
+    API oficial utilizada por el sistema CARELOGIX para subir facturas en formato
+    de imagen a OneDrive mediante Microsoft Graph y para insertar líneas 606/607
+    en el archivo Excel contable.  
+    Autor: Master Sensei – CARELOGIX CRG SRL.
+  contact:
+    name: Master Sensei
+    email: soporte@carelogix.pro
 
 servers:
-  - url: https://graph.microsoft.com/v1.0
+  - url: https://factura-laamigra-workers-dev.jit.dev
 
 paths:
-  /sites/{siteId}/drives/{driveId}/root:/CARELOGIX_Facturas_606-607/CARELOGIX_Facturas_DB.xlsx:/workbook/tables/Table1/rows/add:
+
+  /uploadFacturaImagen:
     post:
-      summary: Insertar fila de factura en Excel (BASE DE DATOS)
-      operationId: insertFactura
-      security:
-        - oauth2: [Files.ReadWrite.All, Sites.ReadWrite.All]
-      parameters:
-        - name: siteId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: driveId
-          in: path
-          required: true
-          schema:
-            type: string
+      operationId: uploadFacturaImagen
+      summary: Sube una factura en imagen a OneDrive.
+      description: >
+        Paso 1 del flujo DGII.  
+        Requiere fileName, fileBase64 y fechaComprobante (AAAAMMDD).  
+        La imagen se guarda en la carpeta mensual YYYYMM generada automáticamente.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - fileName
+                - fileBase64
+                - fechaComprobante
               properties:
-                values:
-                  type: array
-                  description: "Fila completa en el orden exacto de columnas"
-                  items:
-                    type: array
-                    items:
-                      type: string
+                fileName:
+                  type: string
+                  description: Nombre final del archivo (PNG/JPG).
+                fileBase64:
+                  type: string
+                  description: Cadena Base64 completa de la imagen.
+                fechaComprobante:
+                  type: string
+                  description: Fecha del comprobante AAAAMMDD utilizada para crear la carpeta.
       responses:
         "200":
-          description: Fila agregada correctamente
+          description: Imagen subida exitosamente.
         "400":
-          description: Error en datos enviados
+          description: Parámetros inválidos.
+        "500":
+          description: Error interno del Worker.
 
-  /sites/{siteId}/drives/{driveId}/root:/CARELOGIX_Imagenes_Facturas/{fileName}:/content:
-    put:
-      summary: Subir imagen de factura a SharePoint
-      operationId: uploadFacturaImagen
-      security:
-        - oauth2: [Files.ReadWrite.All, Sites.ReadWrite.All]
-      parameters:
-        - name: siteId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: driveId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: fileName
-          in: path
-          required: true
-          schema:
-            type: string
+  /insertFactura:
+    post:
+      operationId: insertFactura
+      summary: Inserta una línea contable (606/607) en Excel.
+      description: >
+        Paso 2 del flujo DGII.  
+        Recibe la matriz 'values', donde cada fila incluye todas las columnas del
+        606 o 607, incluyendo la imagenUrl en la última columna.
       requestBody:
         required: true
         content:
-          application/octet-stream:
+          application/json:
             schema:
-              type: string
-              format: binary
+              type: object
+              required:
+                - values
+              properties:
+                values:
+                  type: array
+                  description: Matriz de una o varias filas para Excel (Table1).
+                  items:
+                    type: array
       responses:
-        "201":
-          description: Imagen subida
+        "200":
+          description: Línea insertada correctamente.
         "400":
-          description: Error al subir archivo
+          description: Error en los datos enviados.
+        "500":
+          description: Error interno al insertar datos.
 
-components:
-  securitySchemes:
-    oauth2:
-      type: oauth2
-      flows:
-        clientCredentials:
-          tokenUrl: https://login.microsoftonline.com/6da08a49-de7f-46e3-ac0f-a3ffe1e71542/oauth2/v2.0/token
-          scopes:
-            Files.ReadWrite.All: Leer y escribir archivos
-            Sites.ReadWrite.All: Leer y escribir sitios
+  /debug:
+    post:
+      operationId: debug
+      summary: Devuelve el JSON recibido sin validación.
+      description: Endpoint auxiliar para pruebas.
+      responses:
+        "200":
+          description: El Worker devolvió el cuerpo recibido.
